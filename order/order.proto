@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/sdshah09/GoCore/order/pb;pb";
+
+message OrderProduct {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    double price = 4;
+    uint32 quantity = 5; 
+}
+
+message Order {
+    string id = 1;
+    google.protobuf.Timestamp created_at = 2;
+    double total_price = 3;
+    string account_id = 4;
+    repeated OrderProduct products = 5;
+}
+
+message PostOrderRequest {
+    string accountID = 1;
+    message OrderedProduct {
+        string productId = 1;
+        uint32 quantity = 2;
+    }
+    repeated OrderedProduct products = 2;
+}
+
+message PostOrderResponse {
+    Order order = 1;
+}
+
+message GetOrderRequest {
+    string id = 1;
+}
+
+message GetOrderResponse {
+    Order order = 1;
+}
+
+message GetOrdersForAccountRequest {
+    string accountID = 1;
+}
+
+message GetOrdersForAccountResponse {
+    repeated Order orders = 1;
+}
+
+service OrderService {
+    rpc PostOrder(PostOrderRequest) returns (PostOrderResponse) {}
+    rpc GetOrdersForAccount(GetOrdersForAccountRequest) returns (GetOrdersForAccountResponse) {}
+}

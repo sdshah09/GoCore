@@ -1,0 +1,81 @@
+services:
+  account:
+    build:
+      context: .
+      dockerfile: ./account/app.dockerfile
+    depends_on:
+      - account_db
+    environment:
+      DATABASE_URL: postgres://postgres:password@account_db/gocore?sslmode=disable
+    restart: on-failure
+
+  product:
+    build:
+      context: .
+      dockerfile: ./product/app.dockerfile
+    depends_on:
+      - product_db
+    environment:
+      DATABASE_URL: http://product_db:9200
+    restart: on-failure
+
+  order:
+    build:
+      context: .
+      dockerfile: ./order/app.dockerfile
+    depends_on:
+      - order_db
+    environment:
+      DATABASE_URL: postgres://postgres:password@order_db/gocore?sslmode=disable
+      ACCOUNT_SERVICE_URL: account:8081
+      PRODUCT_SERVICE_URL: product:8082
+    restart: on-failure
+
+  graphql:
+    build:
+      context: .
+      dockerfile: ./graphql/app.dockerfile
+    ports:
+      - 8000:8080
+    depends_on:
+      - account
+      - product
+    environment:
+      ACCOUNT_SERVICE_URL: account:8081
+      PRODUCT_SERVICE_URL: product:8082
+      ORDER_SERVICE_URL: order:8083
+    restart: on-failure
+
+  account_db:
+    build:
+      context: ./account
+      dockerfile: ./db.dockerfile
+    environment:
+      POSTGRES_DB: gocore
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    restart: unless-stopped
+
+  product_db:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.13
+    environment:
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      discovery.type: single-node
+      xpack.security.enabled: false
+      cluster.name: docker-cluster
+      bootstrap.memory_lock: false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    restart: unless-stopped
+
+  order_db:
+    build:
+      context: ./order
+      dockerfile: ./db.dockerfile
+    environment:
+      POSTGRES_DB: gocore
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    restart: unless-stopped

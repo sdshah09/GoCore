@@ -16,11 +16,13 @@ COPY go.mod go.sum ./
 # Download dependencies
 RUN go mod download
 
-# Copy source code
+# Copy all required source code
+COPY account account
 COPY product product
+COPY order order
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/bin/app ./product/cmd/product
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/bin/app ./order/cmd/order
 
 # Runtime stage
 FROM debian:bookworm-slim
@@ -35,6 +37,6 @@ WORKDIR /usr/bin
 # Copy binary from build stage
 COPY --from=build /go/bin/app .
 
-EXPOSE 8082
+EXPOSE 8083
 
 CMD ["./app"]

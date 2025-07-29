@@ -10,9 +10,9 @@ import (
 )
 
 type AppConfig struct {
-	AccountURL string `envconfig:"ACCOUNT_SERVICE_URL`
-	ProductURL string `envconfig:"PRODUCT_SERVICE_URL`
-	OrderURL   string `envconfig:"ORDER_SERVICE_URL`
+	AccountURL string `envconfig:"ACCOUNT_SERVICE_URL"`
+	ProductURL string `envconfig:"PRODUCT_SERVICE_URL"`
+	OrderURL   string `envconfig:"ORDER_SERVICE_URL"`
 }
 
 func main() {

@@ -1,4 +1,6 @@
 FROM golang:1.24.5-bookworm AS build
+
+# Install build dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -7,12 +9,20 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /go/src/github.com/sdshah09/GoCore
+
+# Copy go mod files
 COPY go.mod go.sum ./
+
+# Download dependencies
 RUN go mod download
+
+# Copy source code
 COPY account account
+
+# Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/bin/app ./account/cmd/account
 
-# Step 2 multi stage docker to use only binaries to decrease docker image size
+# Runtime stage
 FROM debian:bookworm-slim
 
 # Install runtime dependencies
