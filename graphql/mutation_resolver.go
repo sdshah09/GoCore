@@ -74,9 +74,21 @@ func (r *mutationResolver) CreateOrder(ctx context.Context, in OrderInput) (*Ord
 		return nil, err
 	}
 
+	var orderProducts []*OrderProduct
+	for _, p := range o.Products {
+		orderProducts = append(orderProducts, &OrderProduct{
+			ID:          p.ID,
+			Name:        p.Name,
+			Description: p.Description,
+			Price:       p.Price,
+			Quantity:    int(p.Quantity),
+		})
+	}
+
 	return &Order{
 		ID:         o.ID,
 		CreatedAt:  o.CreatedAt,
 		TotalPrice: o.TotalPrice,
+		Products:   orderProducts,
 	}, nil
 }

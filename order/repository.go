@@ -78,71 +78,79 @@ func (r *postgresRepository) PutOrder(ctx context.Context, ord Order) error {
 	return nil
 }
 
-func (r *postgresRepository) GetOrdersForAccount(ctx context.Context, accountId string) ([]Order, error) {
+func (r *postgresRepository) GetOrdersForAccount(ctx context.Context, accountID string) ([]Order, error) {
 	orders := []Order{}
 	order := &Order{}
-	products := []OrderedProduct{}
-	order_product := &OrderedProduct{}
 	lastOrder := &Order{}
+	orderedProduct := &OrderedProduct{}
+	products := []OrderedProduct{}
 
 	rows, err := r.db.QueryContext(
 		ctx,
 		`SELECT
-		ord.id,
-		ord.created_at,
-		ord.account_id,
-		ord.total_price::money::numeric::float8,
-		ord_prod.product_id,
-		ord_prod.quantity
-		FROM orders ord JOIN order_products ord_prod ON(ord.id = ord_prod.order_id)
-		WHERE ord.account_id = $1
-		ORDER BY ord.id`,
-		accountId,
+      o.id,
+      o.created_at,
+      o.account_id,
+      o.total_price::money::numeric::float8,
+      op.product_id,
+      op.quantity
+    FROM orders o JOIN order_products op ON (o.id = op.order_id)
+    WHERE o.account_id = $1
+    ORDER BY o.id`,
+		accountID,
 	)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
+	// Scan rows into Order structs
 	for rows.Next() {
 		if err = rows.Scan(
 			&order.ID,
 			&order.CreatedAt,
 			&order.AccountID,
 			&order.TotalPrice,
-			&order_product.ID,
-			&order_product.Quantity,
+			&orderedProduct.ID,
+			&orderedProduct.Quantity,
 		); err != nil {
 			return nil, err
 		}
+		// Scan order
 		if lastOrder.ID != "" && lastOrder.ID != order.ID {
 			newOrder := Order{
 				ID:         lastOrder.ID,
 				AccountID:  lastOrder.AccountID,
 				CreatedAt:  lastOrder.CreatedAt,
 				TotalPrice: lastOrder.TotalPrice,
-				Products:   lastOrder.Products,
+				Products:   products,
 			}
 			orders = append(orders, newOrder)
 			products = []OrderedProduct{}
 		}
+		// Scan products
 		products = append(products, OrderedProduct{
-			ID:       order_product.ID,
-			Quantity: order_product.Quantity,
+			ID:       orderedProduct.ID,
+			Quantity: orderedProduct.Quantity,
 		})
+
 		*lastOrder = *order
 	}
+
+	// Add last order (or first :D)
 	if lastOrder != nil {
 		newOrder := Order{
 			ID:         lastOrder.ID,
 			AccountID:  lastOrder.AccountID,
 			CreatedAt:  lastOrder.CreatedAt,
 			TotalPrice: lastOrder.TotalPrice,
-			Products:   lastOrder.Products,
+			Products:   products,
 		}
 		orders = append(orders, newOrder)
 	}
+
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
-	return orders, nil
 
+	return orders, nil
 }
