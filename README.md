@@ -5,7 +5,6 @@ A microservices-based e-commerce platform built with Go, gRPC, GraphQL, PostgreS
 ## Architecture
 
 ![Architecture](architecture.png)
-```
 
 
 ## Services
