@@ -24,3 +24,10 @@ spec:
           value: "postgres"
         - name: POSTGRES_PASSWORD
           value: "password"
+        volumeMounts:
+        - name: init-script
+          mountPath: /docker-entrypoint-initdb.d
+      volumes:
+      - name: init-script
+        configMap:
+          name: order-db-init
