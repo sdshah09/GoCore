@@ -6,7 +6,11 @@ services:
     depends_on:
       - account_db
     environment:
-      DATABASE_URL: postgres://postgres:password@account_db/gocore?sslmode=disable
+      DB_HOST: account_db
+      DB_PORT: "5432"
+      DB_NAME: gocore
+      DB_USER: postgres
+      DB_PASSWORD: password
     restart: on-failure
 
   product:
@@ -26,7 +30,11 @@ services:
     depends_on:
       - order_db
     environment:
-      DATABASE_URL: postgres://postgres:password@order_db/gocore?sslmode=disable
+      DB_HOST: order_db
+      DB_PORT: "5432"
+      DB_NAME: gocore
+      DB_USER: postgres
+      DB_PASSWORD: password
       ACCOUNT_SERVICE_URL: account:8081
       PRODUCT_SERVICE_URL: product:8082
     restart: on-failure

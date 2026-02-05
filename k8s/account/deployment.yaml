@@ -19,5 +19,19 @@ spec:
         ports:
         - containerPort: 8081
         env:
-        - name: DATABASE_URL
-          value: "postgres://postgres:password@account-db:5432/gocore?sslmode=disable"
+        - name: DB_HOST
+          value: "account-db"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "gocore"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: postgres-user
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: postgres-password
