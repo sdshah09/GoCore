@@ -13,6 +13,7 @@ var ErrNotFound = errors.New("product not found")
 
 type Repository interface {
 	Close()
+	Ping(ctx context.Context) error
 	PutProduct(ctx context.Context, product Product) error
 	GetProductByID(ctx context.Context, id string) (*Product, error)
 	ListAllProducts(ctx context.Context, skip uint64, take uint64) ([]Product, error)
@@ -43,6 +44,19 @@ func NewElasticRepository(url string) (Repository, error) {
 }
 
 func (r *elasticRepository) Close() {
+}
+
+func (r *elasticRepository) Ping(ctx context.Context) error {
+	// Use ClusterHealth (same as K8s probe) - more reliable than Ping("") which can fail
+	health, err := r.client.ClusterHealth().Do(ctx)
+	if err != nil {
+		return err
+	}
+	// Accept green or yellow (single-node clusters are typically yellow)
+	if health.Status != "green" && health.Status != "yellow" {
+		return errors.New("cluster status: " + health.Status)
+	}
+	return nil
 }
 
 // PUT /products/_doc/123

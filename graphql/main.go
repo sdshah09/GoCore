@@ -28,5 +28,16 @@ func main() {
 	}
 	http.Handle("/graphql", handler.NewDefaultServer(server.ToExecutableSchema()))
 	http.Handle("/playground", playground.Handler("shaswat", "/graphql"))
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+	http.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+		// GraphQL gateway is ready if server is initialized
+		// Optionally: check downstream services (account, product, order)
+		// For now, just check if server is running
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

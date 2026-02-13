@@ -6,5 +6,9 @@ spec:
   selector:
     app: product
   ports:
-  - port: 8082
+  - name: grpc
+    port: 8082
     targetPort: 8082
+  - name: health
+    port: 8080
+    targetPort: 8080

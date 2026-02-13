@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"time"
 
@@ -46,6 +47,27 @@ func main() {
 		return
 	})
 	defer repo.Close()
+	
+	// Start HTTP health check server
+	go func() {
+		http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		})
+		http.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+			// Check database connectivity
+			if err := repo.Ping(); err != nil {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				w.Write([]byte("Database not available"))
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		})
+		log.Println("Health check server listening on :8080")
+		log.Fatal(http.ListenAndServe(":8080", nil))
+	}()
+	
 	log.Println("Listening on 8083...")
 	s := order.NewService(repo)
 	log.Fatal(order.ListenGRPC(s, cfg.AccountURL, cfg.ProductURL, 8083))

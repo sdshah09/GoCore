@@ -6,5 +6,9 @@ spec:
   selector:
     app: order
   ports:
-  - port: 8083
+  - name: grpc
+    port: 8083
     targetPort: 8083
+  - name: health
+    port: 8080
+    targetPort: 8080

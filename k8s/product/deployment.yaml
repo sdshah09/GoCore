@@ -14,10 +14,35 @@ spec:
     spec:
       containers:
       - name: product
-        image: product-service:v1
+        image: product-service:v3
         imagePullPolicy: Never
         ports:
         - containerPort: 8082
+        - name: liveness-port
+          containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: liveness-port
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+          successThreshold: 1
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: liveness-port
+          initialDelaySeconds: 30
+          periodSeconds: 60
+          timeoutSeconds: 10
+          failureThreshold: 2
+        startupProbe:
+          httpGet:
+            path: /health
+            port: liveness-port
+          failureThreshold: 30
+          periodSeconds: 10
         env:
         - name: DATABASE_URL
           value: "http://product-db:9200"

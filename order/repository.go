@@ -9,6 +9,7 @@ import (
 
 type Repository interface {
 	Close()
+	Ping() error
 	PutOrder(ctx context.Context, o Order) error
 	GetOrdersForAccount(ctx context.Context, accountID string) ([]Order, error)
 }
@@ -32,6 +33,10 @@ func NewPostgresRepository(url string) (Repository, error) {
 
 func (r *postgresRepository) Close() {
 	r.db.Close()
+}
+
+func (r *postgresRepository) Ping() error {
+	return r.db.Ping()
 }
 
 func (r *postgresRepository) PutOrder(ctx context.Context, ord Order) error {
