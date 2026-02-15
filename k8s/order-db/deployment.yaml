@@ -70,3 +70,11 @@ spec:
       - name: postgres-storage
         persistentVolumeClaim:
           claimName: order-db-pvc
+      resources:
+        requests:
+          cpu: "200m"
+          memory: "512Mi"
+        limits:
+          cpu: "500m"
+          memory: "1Gi"
+
