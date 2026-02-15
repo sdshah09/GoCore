@@ -1,0 +1,29 @@
+{{- /*
+  Renders Ingress from .Values.ingress (name, className, rules).
+  Backend uses service.name and service.port.number (networking.k8s.io/v1).
+*/ -}}
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.ingress.name }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  rules:
+  {{- range .Values.ingress.rules }}
+  - http:
+      paths:
+      {{- range .http.paths }}
+      - path: {{ .path }}
+        pathType: {{ .pathType }}
+        backend:
+          service:
+            name: {{ .backend.serviceName }}
+            port:
+              number: {{ .backend.servicePort }}
+      {{- end }}
+  {{- end }}
+{{- end }}

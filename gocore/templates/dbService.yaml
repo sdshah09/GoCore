@@ -1,0 +1,22 @@
+{{- /*
+  Renders Kubernetes Service resources for DBs (account-db, order-db, product-db).
+  Uses the dbServices partition from values.yaml; enabled flag comes from each component (accountDb.enabled, etc.).
+*/ -}}
+{{- range .Values.dbServices }}
+{{- $ref := .ref }}
+{{- $comp := index $.Values $ref }}
+{{- if and $comp $comp.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .name }}
+spec:
+  selector:
+    app: {{ .selector }}
+  ports:
+{{- range .ports }}
+  - {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}

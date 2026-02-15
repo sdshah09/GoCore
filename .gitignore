@@ -22,6 +22,10 @@ go.work
 .env.local
 .env.*.local
 
+# Helm values with secrets (do not commit)
+*-secret*.yaml
+values-*.local.yaml
+
 # OS generated files
 .DS_Store
 .DS_Store?

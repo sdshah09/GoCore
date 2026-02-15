@@ -1,0 +1,75 @@
+{{- /*
+  Renders Kubernetes Deployment resources for microservices from .Values.services.
+  Uses global.imagePullPolicy and global.dbCredentialsSecret for env from secrets.
+*/ -}}
+{{- $root := . }}
+{{- range $selector, $svc := .Values.services }}
+{{- if $svc.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $svc.name }}
+spec:
+  replicas: {{ $svc.replicas }}
+  selector:
+    matchLabels:
+      app: {{ $selector }}
+  template:
+    metadata:
+      labels:
+        app: {{ $selector }}
+    spec:
+      containers:
+      - name: {{ $selector }}
+        image: "{{ $svc.image.repository }}:{{ $svc.image.tag | default "latest" }}"
+        imagePullPolicy: {{ $root.Values.global.imagePullPolicy | default "IfNotPresent" }}
+        ports:
+        - containerPort: {{ $svc.ports.grpc | default $svc.ports.app }}
+        - name: liveness-port
+          containerPort: {{ $svc.ports.health }}
+        readinessProbe:
+          httpGet:
+            path: {{ $svc.probes.readiness.path }}
+            port: liveness-port
+          initialDelaySeconds: {{ $svc.probes.readiness.initialDelaySeconds }}
+          periodSeconds: {{ $svc.probes.readiness.periodSeconds }}
+          timeoutSeconds: {{ $svc.probes.readiness.timeoutSeconds }}
+          failureThreshold: {{ $svc.probes.readiness.failureThreshold }}
+          successThreshold: {{ $svc.probes.readiness.successThreshold }}
+        livenessProbe:
+          httpGet:
+            path: {{ $svc.probes.liveness.path }}
+            port: liveness-port
+          initialDelaySeconds: {{ $svc.probes.liveness.initialDelaySeconds }}
+          periodSeconds: {{ $svc.probes.liveness.periodSeconds }}
+          timeoutSeconds: {{ $svc.probes.liveness.timeoutSeconds }}
+          failureThreshold: {{ $svc.probes.liveness.failureThreshold }}
+        startupProbe:
+          httpGet:
+            path: {{ $svc.probes.startup.path }}
+            port: liveness-port
+          failureThreshold: {{ $svc.probes.startup.failureThreshold }}
+          periodSeconds: {{ $svc.probes.startup.periodSeconds }}
+        resources:
+          requests:
+            cpu: {{ $svc.resources.requests.cpu | quote }}
+            memory: {{ $svc.resources.requests.memory | quote }}
+          limits:
+            cpu: {{ $svc.resources.limits.cpu | quote }}
+            memory: {{ $svc.resources.limits.memory | quote }}
+        env:
+{{- range $envKey, $envVal := $svc.env }}
+{{- if hasSuffix "_SECRET" $envKey }}
+        - name: {{ trimSuffix "_SECRET" $envKey }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ $root.Values.global.dbCredentialsSecret }}
+              key: {{ $envVal }}
+{{- else }}
+        - name: {{ $envKey }}
+          value: {{ $envVal | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

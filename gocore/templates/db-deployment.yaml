@@ -1,0 +1,139 @@
+{{- /*
+  Renders PVCs and Deployments for DBs (account-db, order-db, product-db) from .Values.accountDb, .Values.orderDb, .Values.productDb.
+  Postgres: exec probes, preStop, init ConfigMap, data + init volumes. Elasticsearch: httpGet probes, data volume only.
+*/ -}}
+{{- $root := . }}
+{{- $dbRefs := list "accountDb" "orderDb" "productDb" }}
+{{- range $dbRefs }}
+{{- $db := index $root.Values . }}
+{{- if not $db.enabled }}
+{{- continue }}
+{{- end }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $db.pvc.name }}
+  annotations:
+    "helm.sh/resource-policy": keep
+spec:
+  accessModes: {{ toYaml $db.pvc.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ $db.pvc.size }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $db.name }}
+spec:
+  replicas: {{ $db.replicas }}
+  selector:
+    matchLabels:
+      app: {{ $db.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $db.name }}
+    spec:
+      containers:
+      {{- if $db.initConfigMap }}
+      - name: postgres
+        image: "{{ $db.image.repository }}:{{ $db.image.tag }}"
+        imagePullPolicy: {{ $root.Values.global.imagePullPolicy | default "IfNotPresent" }}
+        ports:
+        - containerPort: {{ $db.port }}
+        readinessProbe:
+          exec:
+            command: {{ toYaml $db.probes.readiness.exec | nindent 12 }}
+          initialDelaySeconds: {{ $db.probes.readiness.initialDelaySeconds }}
+          periodSeconds: {{ $db.probes.readiness.periodSeconds }}
+          timeoutSeconds: {{ $db.probes.readiness.timeoutSeconds }}
+          failureThreshold: {{ $db.probes.readiness.failureThreshold }}
+          successThreshold: {{ $db.probes.readiness.successThreshold }}
+        livenessProbe:
+          exec:
+            command: {{ toYaml $db.probes.liveness.exec | nindent 12 }}
+          initialDelaySeconds: {{ $db.probes.liveness.initialDelaySeconds }}
+          periodSeconds: {{ $db.probes.liveness.periodSeconds }}
+          timeoutSeconds: {{ $db.probes.liveness.timeoutSeconds }}
+          failureThreshold: {{ $db.probes.liveness.failureThreshold }}
+        lifecycle:
+          preStop:
+            exec:
+              command: {{ toYaml $db.lifecycle.preStop | nindent 14 }}
+        env:
+        - name: POSTGRES_DB
+          value: {{ $db.env.POSTGRES_DB | quote }}
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ $root.Values.global.dbCredentialsSecret }}
+              key: {{ $db.env.POSTGRES_USER_SECRET }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ $root.Values.global.dbCredentialsSecret }}
+              key: {{ $db.env.POSTGRES_PASSWORD_SECRET }}
+        volumeMounts:
+        - name: init-script
+          mountPath: {{ $db.initMountPath }}
+        - name: postgres-storage
+          mountPath: {{ $db.dataMountPath }}
+        resources:
+          requests:
+            cpu: {{ $db.resources.requests.cpu | quote }}
+            memory: {{ $db.resources.requests.memory | quote }}
+          limits:
+            cpu: {{ $db.resources.limits.cpu | quote }}
+            memory: {{ $db.resources.limits.memory | quote }}
+      volumes:
+      - name: init-script
+        configMap:
+          name: {{ $db.initConfigMap }}
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: {{ $db.pvc.name }}
+      {{- else }}
+      - name: elasticsearch
+        image: "{{ $db.image.repository }}:{{ $db.image.tag }}"
+        ports:
+        - containerPort: {{ $db.port }}
+        readinessProbe:
+          httpGet:
+            path: {{ $db.probes.readiness.httpGet.path }}
+            port: {{ $db.probes.readiness.httpGet.port }}
+          initialDelaySeconds: {{ $db.probes.readiness.initialDelaySeconds }}
+          periodSeconds: {{ $db.probes.readiness.periodSeconds }}
+          timeoutSeconds: {{ $db.probes.readiness.timeoutSeconds }}
+          failureThreshold: {{ $db.probes.readiness.failureThreshold }}
+          successThreshold: {{ $db.probes.readiness.successThreshold }}
+        livenessProbe:
+          httpGet:
+            path: {{ $db.probes.liveness.httpGet.path }}
+            port: {{ $db.probes.liveness.httpGet.port }}
+          initialDelaySeconds: {{ $db.probes.liveness.initialDelaySeconds }}
+          periodSeconds: {{ $db.probes.liveness.periodSeconds }}
+          timeoutSeconds: {{ $db.probes.liveness.timeoutSeconds }}
+          failureThreshold: {{ $db.probes.liveness.failureThreshold }}
+        volumeMounts:
+        - name: elasticsearch-data
+          mountPath: {{ $db.dataMountPath }}
+        env:
+        {{- range $k, $v := $db.env }}
+        - name: {{ $k }}
+          value: {{ $v | quote }}
+        {{- end }}
+        resources:
+          requests:
+            cpu: {{ $db.resources.requests.cpu | quote }}
+            memory: {{ $db.resources.requests.memory | quote }}
+          limits:
+            cpu: {{ $db.resources.limits.cpu | quote }}
+            memory: {{ $db.resources.limits.memory | quote }}
+      volumes:
+      - name: elasticsearch-data
+        persistentVolumeClaim:
+          claimName: {{ $db.pvc.name }}
+      {{- end }}
+{{- end }}

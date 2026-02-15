@@ -1,0 +1,457 @@
+# Default values for gocore.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+# Default values for gocore.
+# Derived from k8s/ manifests: deployments, services, PVCs, configmaps, secrets, ingress.
+
+global:
+  imagePullPolicy: Never
+  dbCredentialsSecret: db-credentials
+
+# DB credentials Secret. Do NOT put real values here (they would be committed to Git).
+# Provide at install time, e.g.:
+#   --set secrets.dbCredentials.stringData.postgres-user=postgres \
+#   --set secrets.dbCredentials.stringData.postgres-password=yourpassword
+# Or use a gitignored file: -f my-secret-values.yaml
+secrets:
+  dbCredentials:
+    name: db-credentials
+    # stringData: leave empty in repo; set via --set or -f <file>
+    # stringData:
+    #   postgres-user: "postgres"
+    #   postgres-password: "password"
+
+# --- Microservices (used by templates/service.yaml; ports declared in template) ---
+services:
+  account:
+    enabled: true
+    name: account-service
+    replicas: 2
+    image:
+      repository: account-service
+      tag: "v3"
+    ports:
+      grpc: 8081
+      health: 8080
+    env:
+      DB_HOST: "account-db"
+      DB_PORT: "5432"
+      DB_NAME: "gocore"
+      DB_USER_SECRET: postgres-user
+      DB_PASSWORD_SECRET: postgres-password
+    probes:
+      readiness: { path: /ready, port: 8080, initialDelaySeconds: 5, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3, successThreshold: 1 }
+      liveness:  { path: /health, port: 8080, initialDelaySeconds: 30, periodSeconds: 60, timeoutSeconds: 10, failureThreshold: 2 }
+      startup:   { path: /health, port: 8080, failureThreshold: 30, periodSeconds: 10 }
+    resources:
+      requests: { cpu: "100m", memory: "128Mi" }
+      limits:   { cpu: "300m", memory: "256Mi" }
+
+  order:
+    enabled: true
+    name: order-service
+    replicas: 2
+    image:
+      repository: order-service
+      tag: "v3"
+    ports:
+      grpc: 8083
+      health: 8080
+    env:
+      DB_HOST: "order-db"
+      DB_PORT: "5432"
+      DB_NAME: "gocore"
+      DB_USER_SECRET: postgres-user
+      DB_PASSWORD_SECRET: postgres-password
+      ACCOUNT_SERVICE_URL: "account-service:8081"
+      PRODUCT_SERVICE_URL: "product-service:8082"
+    probes:
+      readiness: { path: /ready, port: 8080, initialDelaySeconds: 5, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3, successThreshold: 1 }
+      liveness:  { path: /health, port: 8080, initialDelaySeconds: 30, periodSeconds: 60, timeoutSeconds: 10, failureThreshold: 2 }
+      startup:   { path: /health, port: 8080, failureThreshold: 30, periodSeconds: 10 }
+    resources:
+      requests: { cpu: "100m", memory: "128Mi" }
+      limits:   { cpu: "300m", memory: "256Mi" }
+
+  product:
+    enabled: true
+    name: product-service
+    replicas: 2
+    image:
+      repository: product-service
+      tag: "v3"
+    ports:
+      grpc: 8082
+      health: 8080
+    env:
+      DATABASE_URL: "http://product-db:9200"
+    probes:
+      readiness: { path: /ready, port: 8080, initialDelaySeconds: 5, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3, successThreshold: 1 }
+      liveness:  { path: /health, port: 8080, initialDelaySeconds: 30, periodSeconds: 60, timeoutSeconds: 10, failureThreshold: 2 }
+      startup:   { path: /health, port: 8080, failureThreshold: 30, periodSeconds: 10 }
+    resources:
+      requests: { cpu: "100m", memory: "128Mi" }
+      limits:   { cpu: "300m", memory: "256Mi" }
+
+  graphql:
+    enabled: true
+    name: graphql
+    replicas: 2
+    image:
+      repository: graphql-service
+      tag: "v2"
+    ports:
+      app: 8081
+      health: 8080
+    env:
+      ACCOUNT_SERVICE_URL: "account-service:8081"
+      PRODUCT_SERVICE_URL: "product-service:8082"
+      ORDER_SERVICE_URL: "order-service:8083"
+    service:
+      port: 8080
+      targetPort: 8080
+    probes:
+      readiness: { path: /ready, port: 8080, initialDelaySeconds: 5, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3, successThreshold: 1 }
+      liveness:  { path: /health, port: 8080, initialDelaySeconds: 30, periodSeconds: 60, timeoutSeconds: 10, failureThreshold: 2 }
+      startup:   { path: /health, port: 8080, failureThreshold: 30, periodSeconds: 10 }
+    resources:
+      requests: { cpu: "100m", memory: "128Mi" }
+      limits:   { cpu: "300m", memory: "256Mi" }
+
+# --- Partition: DB Services (used by templates/db.yaml) ---
+dbServices:
+  - ref: accountDb
+    name: account-db
+    selector: account-db
+    ports:
+      - port: 5432
+        targetPort: 5432
+  - ref: orderDb
+    name: order-db
+    selector: order-db
+    ports:
+      - port: 5432
+        targetPort: 5432
+  - ref: productDb
+    name: product-db
+    selector: product-db
+    ports:
+      - name: http
+        port: 9200
+        targetPort: 9200
+
+# --- account-db (Postgres) ---
+accountDb:
+  enabled: true
+  name: account-db
+  replicas: 1
+  image:
+    repository: postgres
+    tag: "15"
+  port: 5432
+  env:
+    POSTGRES_DB: "gocore"
+    POSTGRES_USER_SECRET: postgres-user
+    POSTGRES_PASSWORD_SECRET: postgres-password
+  probes:
+    readiness:
+      exec: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\""]
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
+    liveness:
+      exec: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\""]
+      initialDelaySeconds: 30
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 3
+  lifecycle:
+    preStop: ["sh", "-c", "pg_ctl stop -D /var/lib/postgresql/data -m fast -w || true"]
+  pvc:
+    name: account-db-pvc
+    size: 500Mi
+    accessModes: [ReadWriteOnce]
+  dataMountPath: /var/lib/postgresql/data
+  initConfigMap: account-db-init
+  initMountPath: /docker-entrypoint-initdb.d
+  resources:
+    requests: { cpu: "200m", memory: "512Mi" }
+    limits:   { cpu: "500m", memory: "1Gi" }
+
+# --- order-db (Postgres) ---
+orderDb:
+  enabled: true
+  name: order-db
+  replicas: 1
+  image:
+    repository: postgres
+    tag: "15"
+  port: 5432
+  env:
+    POSTGRES_DB: "gocore"
+    POSTGRES_USER_SECRET: postgres-user
+    POSTGRES_PASSWORD_SECRET: postgres-password
+  probes:
+    readiness:
+      exec: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\""]
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
+    liveness:
+      exec: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\""]
+      initialDelaySeconds: 30
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 3
+  lifecycle:
+    preStop: ["sh", "-c", "pg_ctl stop -D /var/lib/postgresql/data -m fast -w || true"]
+  pvc:
+    name: order-db-pvc
+    size: 500Mi
+    accessModes: [ReadWriteOnce]
+  dataMountPath: /var/lib/postgresql/data
+  initConfigMap: order-db-init
+  initMountPath: /docker-entrypoint-initdb.d
+  resources:
+    requests: { cpu: "200m", memory: "512Mi" }
+    limits:   { cpu: "500m", memory: "1Gi" }
+
+# --- product-db (Elasticsearch) ---
+productDb:
+  enabled: true
+  name: product-db
+  replicas: 1
+  image:
+    repository: docker.elastic.co/elasticsearch/elasticsearch
+    tag: "7.17.13"
+  port: 9200
+  env:
+    discovery.type: "single-node"
+    xpack.security.enabled: "false"
+    ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+  probes:
+    readiness:
+      httpGet: { path: "/_cluster/health?wait_for_status=yellow&timeout=1s", port: 9200 }
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
+    liveness:
+      httpGet: { path: "/_cluster/health?wait_for_status=yellow&timeout=1s", port: 9200 }
+      initialDelaySeconds: 60
+      periodSeconds: 30
+      timeoutSeconds: 10
+      failureThreshold: 3
+  pvc:
+    name: product-db-pvc
+    size: 5Gi
+    accessModes: [ReadWriteOnce]
+  dataMountPath: /usr/share/elasticsearch/data
+  resources:
+    requests: { cpu: "500m", memory: "1Gi" }
+    limits:   { cpu: "1", memory: "2Gi" }
+
+# --- ConfigMaps (init scripts) ---
+configMaps:
+  accountDbInit:
+    name: account-db-init
+    data:
+      init.sql: |
+        CREATE TABLE IF NOT EXISTS accounts (
+            id CHAR(27) PRIMARY KEY,
+            name VARCHAR(24) NOT NULL
+        );
+  orderDbInit:
+    name: order-db-init
+    data:
+      init.sql: |
+        CREATE TABLE IF NOT EXISTS orders (
+            id CHAR(27) PRIMARY KEY,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            account_id CHAR(27) NOT NULL,
+            total_price MONEY NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS order_products (
+            order_id CHAR(27) REFERENCES orders (id) ON DELETE CASCADE,
+            product_id CHAR(27),
+            quantity INT NOT NULL,
+            PRIMARY KEY (product_id, order_id)
+        );
+
+# --- Ingress ---
+ingress:
+  enabled: true
+  name: gocore-ingress
+  className: nginx
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              serviceName: graphql
+              servicePort: 8080
+
+# Legacy (single-app chart compatibility)
+replicaCount: 1
+image:
+  repository: nginx
+  pullPolicy: IfNotPresent
+  tag: ""
+service:
+  type: ClusterIP
+  port: 80
+resources: {}
+livenessProbe: { httpGet: { path: /, port: http } }
+readinessProbe: { httpGet: { path: /, port: http } }
+autoscaling: { enabled: false, minReplicas: 1, maxReplicas: 100, targetCPUUtilizationPercentage: 80 }
+volumes: []
+volumeMounts: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+replicaCount: 1
+
+# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+image:
+  repository: nginx
+  # This sets the pull policy for images.
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+# This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+# This is to override the chart name.
+nameOverride: ""
+fullnameOverride: ""
+
+# This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
+serviceAccount:
+  # Specifies whether a service account should be created.
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account.
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template.
+  name: ""
+
+# This is for setting Kubernetes Annotations to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+podAnnotations: {}
+# This is for setting Kubernetes Labels to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+podLabels: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
+service:
+  # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+  type: ClusterIP
+  # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
+  port: 80
+
+# -- Expose the service via gateway-api HTTPRoute
+# Requires Gateway API resources and suitable controller installed within the cluster
+# (see: https://gateway-api.sigs.k8s.io/guides/)
+httpRoute:
+  # HTTPRoute enabled.
+  enabled: false
+  # HTTPRoute annotations.
+  annotations: {}
+  # Which Gateways this Route is attached to.
+  parentRefs:
+  - name: gateway
+    sectionName: http
+    # namespace: default
+  # Hostnames matching HTTP header.
+  hostnames:
+  - chart-example.local
+  # List of rules and filters applied.
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /headers
+  #   filters:
+  #   - type: RequestHeaderModifier
+  #     requestHeaderModifier:
+  #       set:
+  #       - name: My-Overwrite-Header
+  #         value: this-is-the-only-value
+  #       remove:
+  #       - User-Agent
+  # - matches:
+  #   - path:
+  #       type: PathPrefix
+  #       value: /echo
+  #     headers:
+  #     - name: version
+  #       value: v2
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+
+# This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+  # - name: foo
+  #   secret:
+  #     secretName: mysecret
+  #     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+  # - name: foo
+  #   mountPath: "/etc/foo"
+  #   readOnly: true
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
