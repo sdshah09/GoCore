@@ -10,6 +10,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ $svc.name }}
+  namespace: {{ $root.Release.Namespace | default "default" }}
 spec:
   replicas: {{ $svc.replicas }}
   selector:

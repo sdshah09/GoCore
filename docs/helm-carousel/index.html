@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helm Carousel – LinkedIn</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #0a0a0f;
+            --bg-code: #0d0d14;
+            --border: #1e1e2e;
+            --text: #f0f0f5;
+            --text2: #8888a0;
+            --text3: #55556a;
+            --red: #ff4757;
+            --blue: #5b8def;
+            --green: #2ed573;
+            --yellow: #ffa502;
+            --purple: #a55eea;
+            --cyan: #18dcff;
+            --font: 'Inter', -apple-system, sans-serif;
+            --mono: 'JetBrains Mono', 'Fira Code', monospace;
+        }
+
+        body {
+            background: #050508;
+            color: var(--text);
+            font-family: var(--font);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .controls button {
+            background: #12121a;
+            color: var(--text2);
+            border: 1.5px solid var(--border);
+            padding: 8px 18px;
+            border-radius: 10px;
+            font-family: var(--font);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .controls button:hover {
+            border-color: var(--blue);
+            color: var(--text);
+        }
+
+        .controls button.active {
+            border-color: var(--blue);
+            color: var(--blue);
+            background: rgba(91, 141, 239, 0.08);
+        }
+
+        .controls .pdf-btn {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        .slide-counter {
+            color: var(--text3);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        /* Slides */
+        .slides-wrapper {
+            width: 100%;
+            max-width: 1080px;
+        }
+
+        .slide {
+            display: none;
+            width: 1080px;
+            height: 1080px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+            margin: 0 auto;
+        }
+
+        .slide.visible {
+            display: block;
+        }
+
+        .slide-inner {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* Dot background */
+        .dbg::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Footer */
+        .sfoot {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 14px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 10;
+        }
+
+        .sfoot-l {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text3);
+        }
+
+        .sfoot-r {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--text3);
+        }
+
+        /* Tag badges */
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 4px 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+
+        .tag-red {
+            color: var(--red);
+            background: rgba(255, 71, 87, 0.1);
+            border: 1px solid rgba(255, 71, 87, 0.2);
+        }
+
+        .tag-green {
+            color: var(--green);
+            background: rgba(46, 213, 115, 0.1);
+            border: 1px solid rgba(46, 213, 115, 0.2);
+        }
+
+        .tag-blue {
+            color: var(--blue);
+            background: rgba(91, 141, 239, 0.1);
+            border: 1px solid rgba(91, 141, 239, 0.2);
+        }
+
+        /* Headings */
+        .hd {
+            font-size: 38px;
+            font-weight: 900;
+            letter-spacing: -1px;
+            line-height: 1.1;
+            margin-bottom: 20px;
+        }
+
+        /* Bullet list */
+        .blist {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .bitem {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .bicon {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .btxt {
+            font-size: 15px;
+            font-weight: 500;
+            line-height: 1.35;
+        }
+
+        .btxt strong {
+            font-weight: 700;
+        }
+
+        .btxt .s {
+            color: var(--text2);
+        }
+
+        /* ===== SLIDE 1 — HOOK ===== */
+        .slide-1 {
+            background: radial-gradient(ellipse at 50% 40%, rgba(255, 71, 87, 0.08) 0%, var(--bg) 70%);
+        }
+
+        .s1-wrap {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
+            z-index: 1;
+            gap: 32px;
+        }
+
+        .yaml-block {
+            position: relative;
+            width: 520px;
+        }
+
+        .yaml-file {
+            background: var(--bg-code);
+            border: 2px solid #1a1a28;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .yaml-tb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: #0f0f18;
+            border-bottom: 1px solid #1a1a28;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .dot-r {
+            background: #ff5f57;
+        }
+
+        .dot-y {
+            background: #febc2e;
+        }
+
+        .dot-g {
+            background: #28c840;
+        }
+
+        .yaml-fn {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text2);
+            margin-left: 8px;
+        }
+
+        .yaml-body {
+            padding: 14px 18px;
+        }
+
+        .yaml-body pre {
+            font-family: var(--mono);
+            font-size: 12px;
+            line-height: 1.55;
+            color: var(--text3);
+        }
+
+        .yaml-body .k {
+            color: var(--blue);
+        }
+
+        .yaml-body .v {
+            color: var(--green);
+        }
+
+        .yaml-body .bad {
+            color: var(--red);
+            background: rgba(255, 71, 87, 0.08);
+            padding: 0 3px;
+            border-radius: 3px;
+        }
+
+        .yaml-body .cmt {
+            color: #333345;
+            font-style: italic;
+        }
+
+        .red-x {
+            position: absolute;
+            inset: -10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .red-x svg {
+            width: 260px;
+            height: 260px;
+            filter: drop-shadow(0 0 40px rgba(255, 71, 87, 0.5));
+        }
+
+        .s1-title {
+            font-size: 46px;
+            font-weight: 900;
+            text-align: center;
+            line-height: 1.15;
+            letter-spacing: -1.5px;
+        }
+
+        .s1-title .r {
+            color: var(--red);
+        }
+
+        .s1-title .w {
+            color: var(--text);
+        }
+
+        .s1-sub {
+            font-size: 18px;
+            color: var(--text2);
+            text-align: center;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .s1-sub .arr {
+            font-size: 22px;
+            animation: br 1.5s ease-in-out infinite;
+        }
+
+        @keyframes br {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            50% {
+                transform: translateX(6px);
+            }
+        }
+
+        /* ===== SLIDE 2 — PROBLEM ===== */
+        .slide-2 {
+            background: radial-gradient(ellipse at 50% 30%, rgba(255, 165, 2, 0.06) 0%, var(--bg) 70%);
+        }
+
+        .s2-wrap {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 40px 40px 50px;
+            z-index: 1;
+        }
+
+        .code-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .cbox {
+            flex: 1;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid;
+        }
+
+        .cbox-hd {
+            padding: 8px 12px;
+            font-family: var(--font);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .cbox-body {
+            padding: 12px;
+            background: var(--bg-code);
+        }
+
+        .cbox-body pre {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            line-height: 1.5;
+            color: var(--text3);
+        }
+
+        .cbox-body .hl {
+            display: block;
+            margin: 0 -12px;
+            padding: 2px 12px;
+        }
+
+        .dev {
+            border-color: rgba(91, 141, 239, 0.3);
+        }
+
+        .dev .cbox-hd {
+            background: rgba(91, 141, 239, 0.1);
+            color: var(--blue);
+        }
+
+        .dev .hl {
+            background: rgba(91, 141, 239, 0.1);
+            color: var(--blue);
+        }
+
+        .stg {
+            border-color: rgba(255, 165, 2, 0.3);
+        }
+
+        .stg .cbox-hd {
+            background: rgba(255, 165, 2, 0.1);
+            color: var(--yellow);
+        }
+
+        .stg .hl {
+            background: rgba(255, 165, 2, 0.1);
+            color: var(--yellow);
+        }
+
+        .prd {
+            border-color: rgba(255, 71, 87, 0.3);
+        }
+
+        .prd .cbox-hd {
+            background: rgba(255, 71, 87, 0.1);
+            color: var(--red);
+        }
+
+        .prd .hl {
+            background: rgba(255, 71, 87, 0.1);
+            color: var(--red);
+        }
+
+        /* ===== SLIDE 3 — SOLUTION ===== */
+        .slide-3 {
+            background: radial-gradient(ellipse at 50% 40%, rgba(46, 213, 115, 0.06) 0%, var(--bg) 70%);
+        }
+
+        .s3-wrap {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 40px 40px 50px;
+            z-index: 1;
+        }
+
+        .flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            margin-bottom: 24px;
+        }
+
+        .fbox {
+            border-radius: 14px;
+            padding: 24px 18px;
+            text-align: center;
+            min-width: 240px;
+            border: 2px solid;
+        }
+
+        .fbox-icon {
+            font-size: 32px;
+            margin-bottom: 6px;
+        }
+
+        .fbox-title {
+            font-size: 17px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .fbox-sub {
+            font-family: var(--mono);
+            font-size: 11.5px;
+            margin-top: 4px;
+            line-height: 1.5;
+            color: var(--text3);
+        }
+
+        .fb-t {
+            background: rgba(91, 141, 239, 0.05);
+            border-color: rgba(91, 141, 239, 0.25);
+        }
+
+        .fb-t .fbox-title {
+            color: var(--blue);
+        }
+
+        .fb-v {
+            background: rgba(46, 213, 115, 0.05);
+            border-color: rgba(46, 213, 115, 0.25);
+        }
+
+        .fb-v .fbox-title {
+            color: var(--green);
+        }
+
+        .fb-o {
+            background: rgba(165, 94, 234, 0.05);
+            border-color: rgba(165, 94, 234, 0.3);
+            border-width: 3px;
+            box-shadow: 0 0 30px rgba(165, 94, 234, 0.1);
+        }
+
+        .fb-o .fbox-title {
+            color: var(--purple);
+        }
+
+        .fconn {
+            width: 46px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .fconn-plus {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--text3);
+        }
+
+        .fconn-arr {
+            font-size: 22px;
+            color: var(--purple);
+        }
+
+        /* ===== SLIDE 4 — ENGINE ===== */
+        .slide-4 {
+            background: radial-gradient(ellipse at 50% 35%, rgba(91, 141, 239, 0.06) 0%, var(--bg) 70%);
+        }
+
+        .s4-wrap {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 40px 40px 50px;
+            z-index: 1;
+        }
+
+        .term-block {
+            background: #080810;
+            border: 2px solid #1a1a2a;
+            border-radius: 14px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .term-tb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: #0c0c18;
+            border-bottom: 1px solid #1a1a2a;
+        }
+
+        .term-body {
+            padding: 16px 18px;
+        }
+
+        .term-body pre {
+            font-family: var(--mono);
+            font-size: 12.5px;
+            line-height: 1.7;
+        }
+
+        .tp {
+            color: var(--green);
+        }
+
+        .tc {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .tf {
+            color: var(--blue);
+        }
+
+        .ta {
+            color: var(--yellow);
+        }
+
+        .tcmt {
+            color: #333348;
+        }
+
+        .tout {
+            color: var(--text3);
+        }
+
+        .tsuc {
+            color: var(--green);
+        }
+
+        .trb {
+            color: var(--red);
+            font-weight: 600;
+        }
+
+        .thl {
+            display: block;
+            margin: 2px -18px;
+            padding: 2px 18px;
+            background: rgba(91, 141, 239, 0.06);
+            border-left: 3px solid var(--blue);
+        }
+
+        .trl {
+            display: block;
+            margin: 2px -18px;
+            padding: 2px 18px;
+            background: rgba(255, 71, 87, 0.06);
+            border-left: 3px solid var(--red);
+        }
+
+        /* ===== SLIDE 5 — CTA ===== */
+        .slide-5 {
+            background: radial-gradient(ellipse at 30% 50%, rgba(91, 141, 239, 0.06) 0%, transparent 50%), radial-gradient(ellipse at 70% 50%, rgba(165, 94, 234, 0.06) 0%, transparent 50%), var(--bg);
+        }
+
+        .s5-wrap {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
+            z-index: 1;
+            gap: 32px;
+        }
+
+        .s5-title {
+            font-size: 44px;
+            font-weight: 900;
+            text-align: center;
+            letter-spacing: -1.5px;
+            line-height: 1.15;
+        }
+
+        .s5-title .grad {
+            background: linear-gradient(135deg, var(--blue), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .vs-row {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .vs-side {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 20px;
+            border-radius: 16px;
+            border: 2px solid;
+        }
+
+        .vs-logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 52px;
+            margin-bottom: 14px;
+            border: 3px solid;
+        }
+
+        .vs-name {
+            font-size: 32px;
+            font-weight: 900;
+        }
+
+        .vs-desc {
+            font-size: 13px;
+            color: var(--text2);
+            margin-top: 8px;
+            text-align: center;
+            max-width: 200px;
+            line-height: 1.4;
+        }
+
+        .vs-helm {
+            background: rgba(91, 141, 239, 0.04);
+            border-color: rgba(91, 141, 239, 0.2);
+        }
+
+        .vs-helm .vs-logo {
+            background: rgba(91, 141, 239, 0.1);
+            border-color: rgba(91, 141, 239, 0.3);
+        }
+
+        .vs-helm .vs-name {
+            color: var(--blue);
+        }
+
+        .vs-kust {
+            background: rgba(165, 94, 234, 0.04);
+            border-color: rgba(165, 94, 234, 0.2);
+        }
+
+        .vs-kust .vs-logo {
+            background: rgba(165, 94, 234, 0.1);
+            border-color: rgba(165, 94, 234, 0.3);
+        }
+
+        .vs-kust .vs-name {
+            color: var(--purple);
+        }
+
+        .vs-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--bg);
+            border: 3px solid var(--border);
+            font-size: 22px;
+            font-weight: 900;
+            color: var(--text);
+            flex-shrink: 0;
+            z-index: 2;
+            margin: 0 -10px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .s5-sub {
+            font-size: 20px;
+            color: var(--text2);
+            text-align: center;
+            font-weight: 500;
+        }
+
+        /* Print */
+        @media print {
+            body {
+                background: none;
+                padding: 0;
+                margin: 0;
+            }
+
+            .controls {
+                display: none !important;
+            }
+
+            .slide {
+                display: block !important;
+                page-break-after: always;
+                page-break-inside: avoid;
+                border-radius: 0;
+                width: 100%;
+                height: 100vh;
+            }
+
+            .slide:last-child {
+                page-break-after: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="controls" id="controls">
+        <button class="active" onclick="showSlide(1)">1 — Hook</button>
+        <button onclick="showSlide(2)">2 — Problem</button>
+        <button onclick="showSlide(3)">3 — Solution</button>
+        <button onclick="showSlide(4)">4 — Engine</button>
+        <button onclick="showSlide(5)">5 — CTA</button>
+        <span class="slide-counter" id="slideCounter">1 / 5</span>
+        <button class="pdf-btn" onclick="printPDF()">📄 Export PDF</button>
+    </div>
+
+    <div class="slides-wrapper">
+
+        <!-- ===== SLIDE 1 — HOOK ===== -->
+        <div class="slide slide-1 visible" id="slide-1">
+            <div class="slide-inner dbg">
+                <div class="s1-wrap">
+                    <div class="yaml-block">
+                        <div class="yaml-file">
+                            <div class="yaml-tb">
+                                <span class="dot dot-r"></span>
+                                <span class="dot dot-y"></span>
+                                <span class="dot dot-g"></span>
+                                <span class="yaml-fn">deployment-prod-copy-final.yaml</span>
+                            </div>
+                            <div class="yaml-body">
+                                <pre><span class="k">apiVersion:</span> <span class="v">apps/v1</span>
+<span class="k">kind:</span> <span class="v">Deployment</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="bad">account-service-prod-v2-FINAL</span>
+<span class="k">spec:</span>
+  <span class="k">replicas:</span> <span class="bad">10</span>  <span class="cmt"># was 3, changed for prod</span>
+  <span class="k">template:</span>
+    <span class="k">spec:</span>
+      <span class="k">containers:</span>
+        - <span class="k">image:</span> <span class="bad">account:v1.2.3-hotfix</span>
+          <span class="k">env:</span>
+            - <span class="k">name:</span> <span class="bad">DB_PASSWORD</span>
+              <span class="k">value:</span> <span class="bad">"password123"</span> <span class="cmt"># TODO: fix</span></pre>
+                            </div>
+                        </div>
+                        <div class="red-x">
+                            <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <line x1="30" y1="30" x2="170" y2="170" stroke="#ff4757" stroke-width="24"
+                                    stroke-linecap="round" opacity="0.9" />
+                                <line x1="170" y1="30" x2="30" y2="170" stroke="#ff4757" stroke-width="24"
+                                    stroke-linecap="round" opacity="0.9" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="s1-title">
+                        <span class="r">Stop Hardcoding</span><br>
+                        <span class="w">Your Kubernetes Environments.</span>
+                    </div>
+
+                    <div class="s1-sub">
+                        Why you need Helm to manage deployments at scale.
+                        <span class="arr">👉</span>
+                    </div>
+                </div>
+
+                <div class="sfoot">
+                    <div class="sfoot-l">⚓ Helm — The Package Manager for K8s</div>
+                    <div class="sfoot-r">1 / 5</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SLIDE 2 — PROBLEM ===== -->
+        <div class="slide slide-2" id="slide-2">
+            <div class="slide-inner dbg">
+                <div class="s2-wrap">
+                    <div>
+                        <div class="tag tag-red">⚠️ The Problem</div>
+                        <div class="hd" style="color: var(--red);">The Copy-Paste Nightmare.</div>
+                    </div>
+
+                    <div class="code-row">
+                        <div class="cbox dev">
+                            <div class="cbox-hd">🧪 dev.yaml</div>
+                            <div class="cbox-body">
+                                <pre>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: account-svc
+spec:
+<span class="hl">  replicas: <strong style="color:var(--blue)">1</strong></span>
+  template:
+    spec:
+      containers:
+        - image: app:dev</pre>
+                            </div>
+                        </div>
+                        <div class="cbox stg">
+                            <div class="cbox-hd">🏗️ staging.yaml</div>
+                            <div class="cbox-body">
+                                <pre>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: account-svc
+spec:
+<span class="hl">  replicas: <strong style="color:var(--yellow)">3</strong></span>
+  template:
+    spec:
+      containers:
+        - image: app:rc1</pre>
+                            </div>
+                        </div>
+                        <div class="cbox prd">
+                            <div class="cbox-hd">🚀 prod.yaml</div>
+                            <div class="cbox-body">
+                                <pre>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: account-svc
+spec:
+<span class="hl">  replicas: <strong style="color:var(--red)">10</strong></span>
+  template:
+    spec:
+      containers:
+        - image: app:v1.2</pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="blist">
+                        <div class="bitem">
+                            <span class="bicon">💀</span>
+                            <span class="btxt">Managing <strong>50+ microservices</strong> with raw YAML <span
+                                    class="s">is unscalable.</span></span>
+                        </div>
+                        <div class="bitem">
+                            <span class="bicon">🐛</span>
+                            <span class="btxt"><strong>Hardcoding environment variables</strong> <span class="s">leads
+                                    to human error.</span></span>
+                        </div>
+                        <div class="bitem">
+                            <span class="bicon">🔥</span>
+                            <span class="btxt"><strong>Rollbacks are painful</strong> <span class="s">and completely
+                                    manual.</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sfoot">
+                    <div class="sfoot-l">⚓ Helm — The Package Manager for K8s</div>
+                    <div class="sfoot-r">2 / 5</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SLIDE 3 — SOLUTION ===== -->
+        <div class="slide slide-3" id="slide-3">
+            <div class="slide-inner dbg">
+                <div class="s3-wrap">
+                    <div>
+                        <div class="tag tag-green">✅ The Solution</div>
+                        <div class="hd" style="color: var(--green);">Helm: Dynamic Templating.</div>
+                    </div>
+
+                    <div class="flow">
+                        <div class="fbox fb-t">
+                            <div class="fbox-icon">📄</div>
+                            <div class="fbox-title">Template</div>
+                            <div class="fbox-sub">deployment.yaml<br><span style="color:var(--blue)">replicas: {{
+                                    .Values.replicas }}</span></div>
+                        </div>
+                        <div class="fconn"><span class="fconn-plus">+</span></div>
+                        <div class="fbox fb-v">
+                            <div class="fbox-icon">⚙️</div>
+                            <div class="fbox-title">Values File</div>
+                            <div class="fbox-sub">values-prod.yaml<br><span style="color:var(--green)">replicas:
+                                    10</span></div>
+                        </div>
+                        <div class="fconn"><span class="fconn-arr">→</span></div>
+                        <div class="fbox fb-o">
+                            <div class="fbox-icon">🚀</div>
+                            <div class="fbox-title">Final Manifest</div>
+                            <div class="fbox-sub">Ready for K8s cluster<br><span style="color:var(--purple)">replicas:
+                                    10 ✓</span></div>
+                        </div>
+                    </div>
+
+                    <div class="blist">
+                        <div class="bitem">
+                            <span class="bicon">📦</span>
+                            <span class="btxt"><strong>The Chart:</strong> <span class="s">Your base skeleton —
+                                    Deployment, Service, ConfigMap, Ingress.</span></span>
+                        </div>
+                        <div class="bitem">
+                            <span class="bicon">🔧</span>
+                            <span class="btxt"><strong>The values.yaml:</strong> <span class="s">Environment-specific
+                                    variables injected at runtime.</span></span>
+                        </div>
+                        <div class="bitem">
+                            <span class="bicon">♻️</span>
+                            <span class="btxt"><strong>Write the skeleton once.</strong> Deploy it anywhere — dev,
+                                staging, prod.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sfoot">
+                    <div class="sfoot-l">⚓ Helm — The Package Manager for K8s</div>
+                    <div class="sfoot-r">3 / 5</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SLIDE 4 — ENGINE ===== -->
+        <div class="slide slide-4" id="slide-4">
+            <div class="slide-inner dbg">
+                <div class="s4-wrap">
+                    <div>
+                        <div class="tag tag-blue">⚡ Operational Power</div>
+                        <div class="hd" style="color: var(--blue);">One Command. Total Control.</div>
+                    </div>
+
+                    <div class="term-block">
+                        <div class="term-tb">
+                            <span class="dot dot-r"></span>
+                            <span class="dot dot-y"></span>
+                            <span class="dot dot-g"></span>
+                            <span class="yaml-fn">Terminal — helm</span>
+                        </div>
+                        <div class="term-body">
+                            <pre><span class="tcmt"># Deploy your entire stack</span>
+<span class="thl"><span class="tp">$</span> <span class="tc">helm upgrade --install</span> <span class="ta">my-app</span> <span class="tf">./chart</span> <span class="tf">-f</span> <span class="ta">values-prod.yaml</span></span>
+<span class="tsuc">✓ Release "my-app" upgraded. Revision: 4</span>
+
+<span class="tcmt"># Something went wrong? Roll it back instantly.</span>
+<span class="trl"><span class="tp">$</span> <span class="trb">helm rollback</span> <span class="ta">my-app</span> <span class="ta">3</span></span>
+<span class="tsuc">✓ Rollback success! Revision: 5 (rolled back to 3)</span>
+
+<span class="tcmt"># Check release history</span>
+<span class="tp">$</span> <span class="tc">helm history</span> <span class="ta">my-app</span>
+<span class="tout">REVISION  STATUS       DESCRIPTION</span>
+<span class="tout">3         superseded   Upgrade complete</span>
+<span class="tout">4         superseded   Upgrade complete</span>
+<span class="tout">5         deployed     Rollback to 3</span></pre>
+                        </div>
+                    </div>
+
+                    <div class="blist">
+                        <div class="bitem">
+                            <span class="bicon">📦</span>
+                            <span class="btxt">Helm bundles <strong>all resources into a single
+                                    "Release."</strong></span>
+                        </div>
+                        <div class="bitem">
+                            <span class="bicon">🚀</span>
+                            <span class="btxt">Upgrading is one command: <strong style="color:var(--blue)">helm upgrade
+                                    my-app ./chart</strong></span>
+                        </div>
+                        <div class="bitem">
+                            <span class="bicon">⏪</span>
+                            <span class="btxt">Botched a deploy? <strong style="color:var(--red)">helm rollback my-app
+                                    1</strong> <span class="s">— instant recovery.</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sfoot">
+                    <div class="sfoot-l">⚓ Helm — The Package Manager for K8s</div>
+                    <div class="sfoot-r">4 / 5</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SLIDE 5 — CTA ===== -->
+        <div class="slide slide-5" id="slide-5">
+            <div class="slide-inner dbg">
+                <div class="s5-wrap">
+                    <div class="s5-title">
+                        <span class="grad">The Ultimate Debate:</span><br>
+                        <span style="color:var(--text)">Helm or Kustomize?</span>
+                    </div>
+
+                    <div class="vs-row">
+                        <div class="vs-side vs-helm">
+                            <div class="vs-logo">⚓</div>
+                            <div class="vs-name">Helm</div>
+                            <div class="vs-desc">Templating engine + package manager. Charts, values, releases.</div>
+                        </div>
+                        <div class="vs-badge">VS</div>
+                        <div class="vs-side vs-kust">
+                            <div class="vs-logo">🔧</div>
+                            <div class="vs-name">Kustomize</div>
+                            <div class="vs-desc">Overlay-based patching. Native kubectl support. No templating.</div>
+                        </div>
+                    </div>
+
+                    <div class="s5-sub">
+                        💬 Let me know your pick in the comments.
+                    </div>
+                </div>
+
+                <div class="sfoot">
+                    <div class="sfoot-l">⚓ Helm — The Package Manager for K8s</div>
+                    <div class="sfoot-r">5 / 5</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let cur = 1;
+        const total = 5;
+        function showSlide(n) {
+            cur = n;
+            document.querySelectorAll('.slide').forEach(s => s.classList.remove('visible'));
+            document.getElementById(`slide-${n}`).classList.add('visible');
+            document.querySelectorAll('.controls button:not(.pdf-btn)').forEach((b, i) => b.classList.toggle('active', i + 1 === n));
+            document.getElementById('slideCounter').textContent = `${n} / ${total}`;
+        }
+        function printPDF() { window.print(); }
+        document.addEventListener('keydown', e => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { if (cur < total) showSlide(cur + 1); }
+            else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { if (cur > 1) showSlide(cur - 1); }
+        });
+    </script>
+</body>
+
+</html>

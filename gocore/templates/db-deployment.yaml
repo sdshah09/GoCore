@@ -14,6 +14,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: {{ $db.pvc.name }}
+  namespace: {{ $root.Release.Namespace | default "default" }}
   annotations:
     "helm.sh/resource-policy": keep
 spec:
@@ -26,6 +27,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ $db.name }}
+  namespace: {{ $root.Release.Namespace | default "default" }}
 spec:
   replicas: {{ $db.replicas }}
   selector:
