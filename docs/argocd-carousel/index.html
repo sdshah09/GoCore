@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Argo CD Carousel – LinkedIn</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #0a0a0f;
+            --bg-code: #0d0d14;
+            --border: #1e1e2e;
+            --text: #f0f0f5;
+            --text2: #8888a0;
+            --text3: #55556a;
+            --red: #ff4757;
+            --blue: #5b8def;
+            --green: #2ed573;
+            --yellow: #ffa502;
+            --purple: #a55eea;
+            --cyan: #18dcff;
+            --font: 'Inter', -apple-system, sans-serif;
+            --mono: 'JetBrains Mono', 'Fira Code', monospace;
+        }
+        body {
+            background: #050508;
+            color: var(--text);
+            font-family: var(--font);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .controls button {
+            background: #12121a;
+            color: var(--text2);
+            border: 1.5px solid var(--border);
+            padding: 8px 18px;
+            border-radius: 10px;
+            font-family: var(--font);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .controls button:hover { border-color: var(--blue); color: var(--text); }
+        .controls button.active {
+            border-color: var(--blue);
+            color: var(--blue);
+            background: rgba(91, 141, 239, 0.08);
+        }
+        .controls .pdf-btn { border-color: var(--green); color: var(--green); }
+        .slide-counter { color: var(--text3); font-size: 13px; font-weight: 600; }
+        .slides-wrapper { width: 100%; max-width: 1080px; }
+        .slide {
+            display: none;
+            width: 1080px;
+            height: 1080px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+            margin: 0 auto;
+        }
+        .slide.visible { display: block; }
+        .slide-inner { width: 100%; height: 100%; position: relative; }
+        .dbg::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .sfoot {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 14px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 10;
+        }
+        .sfoot-l { font-size: 11px; font-weight: 600; color: var(--text3); }
+        .sfoot-r { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 4px 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+        .tag-red { color: var(--red); background: rgba(255, 71, 87, 0.1); border: 1px solid rgba(255, 71, 87, 0.2); }
+        .tag-green { color: var(--green); background: rgba(46, 213, 115, 0.1); border: 1px solid rgba(46, 213, 115, 0.2); }
+        .tag-blue { color: var(--blue); background: rgba(91, 141, 239, 0.1); border: 1px solid rgba(91, 141, 239, 0.2); }
+        .hd { font-size: 38px; font-weight: 900; letter-spacing: -1px; line-height: 1.1; margin-bottom: 20px; }
+        .blist { display: flex; flex-direction: column; gap: 10px; }
+        .bitem {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .bicon { font-size: 18px; flex-shrink: 0; }
+        .btxt { font-size: 15px; font-weight: 500; line-height: 1.35; }
+        .btxt strong { font-weight: 700; }
+        .btxt .s { color: var(--text2); }
+
+        .slide-1 { background: radial-gradient(ellipse at 50% 40%, rgba(255, 71, 87, 0.12) 0%, var(--bg) 70%); }
+        .s1-wrap {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
+            z-index: 1;
+            gap: 28px;
+        }
+        .push-diagram {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .push-box {
+            padding: 20px 28px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 18px;
+            text-align: center;
+        }
+        .push-ci { background: rgba(255, 71, 87, 0.1); border: 2px solid var(--red); color: var(--red); }
+        .push-arr { font-size: 36px; color: var(--red); }
+        .push-cluster { background: rgba(255, 71, 87, 0.05); border: 2px dashed var(--red); color: var(--text2); }
+        .s1-title { font-size: 44px; font-weight: 900; text-align: center; line-height: 1.2; letter-spacing: -1.5px; }
+        .s1-title .r { color: var(--red); }
+        .s1-title .w { color: var(--text); }
+        .s1-sub { font-size: 17px; color: var(--text2); text-align: center; font-weight: 500; }
+        .s1-sub code { font-family: var(--mono); font-size: 15px; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; }
+        .s1-extra {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 12px;
+        }
+        .s1-stat {
+            font-size: 14px;
+            color: var(--text3);
+            padding: 8px 16px;
+            background: rgba(255, 71, 87, 0.06);
+            border: 1px solid rgba(255, 71, 87, 0.15);
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .slide-2 { background: radial-gradient(ellipse at 50% 30%, rgba(255, 165, 2, 0.08) 0%, var(--bg) 70%); }
+        .s2-wrap {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 40px 40px 50px;
+            z-index: 1;
+        }
+        .conflict-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        .conflict-box {
+            flex: 1;
+            max-width: 280px;
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid;
+            text-align: center;
+        }
+        .conflict-ci { border-color: var(--red); background: rgba(255, 71, 87, 0.05); }
+        .conflict-ci .c-title { color: var(--red); font-weight: 800; margin-bottom: 8px; }
+        .conflict-dev { border-color: var(--blue); background: rgba(91, 141, 239, 0.05); }
+        .conflict-dev .c-title { color: var(--blue); font-weight: 800; margin-bottom: 8px; }
+        .conflict-mid { font-size: 28px; color: var(--yellow); }
+        .c-sub { font-family: var(--mono); font-size: 12px; color: var(--text3); }
+        .drift-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
+        .drift-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 8px;
+            background: rgba(255, 165, 2, 0.15);
+            color: var(--yellow);
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .drift-2 { background: rgba(255, 71, 87, 0.15); color: var(--red); }
+
+        .slide-3 { background: radial-gradient(ellipse at 50% 40%, rgba(46, 213, 115, 0.08) 0%, var(--bg) 70%); }
+        .s3-wrap {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 40px 40px 50px;
+            z-index: 1;
+        }
+        .pull-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .flow-box {
+            padding: 24px 20px;
+            border-radius: 14px;
+            text-align: center;
+            min-width: 220px;
+            border: 2px solid;
+        }
+        .fb-git { background: rgba(46, 213, 115, 0.06); border-color: rgba(46, 213, 115, 0.3); }
+        .fb-git .f-title { color: var(--green); font-weight: 800; font-size: 22px; margin-bottom: 6px; }
+        .fb-argo { background: rgba(91, 141, 239, 0.06); border-color: rgba(91, 141, 239, 0.3); }
+        .fb-argo .f-title { color: var(--blue); font-weight: 800; font-size: 22px; margin-bottom: 6px; }
+        .fb-k8s { background: rgba(165, 94, 234, 0.06); border-color: rgba(165, 94, 234, 0.3); }
+        .fb-k8s .f-title { color: var(--purple); font-weight: 800; font-size: 22px; margin-bottom: 6px; }
+        .flow-arr { font-size: 24px; color: var(--green); }
+        .f-sub { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-top: 4px; }
+        .gitops-principles {
+            margin-top: 16px;
+            padding: 14px 20px;
+            background: rgba(46, 213, 115, 0.04);
+            border: 1px solid rgba(46, 213, 115, 0.15);
+            border-radius: 10px;
+        }
+        .gp-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--green); margin-bottom: 10px; }
+        .gp-row { display: flex; flex-wrap: wrap; gap: 12px; }
+        .gp-item { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+
+        .slide-4 { background: radial-gradient(ellipse at 50% 35%, rgba(91, 141, 239, 0.08) 0%, var(--bg) 70%); }
+        .s4-wrap {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 40px 40px 50px;
+            z-index: 1;
+        }
+        .term-block {
+            background: #080810;
+            border: 2px solid #1a1a2a;
+            border-radius: 14px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .term-tb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: #0c0c18;
+            border-bottom: 1px solid #1a1a2a;
+        }
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .dot-r { background: #ff5f57; }
+        .dot-y { background: #febc2e; }
+        .dot-g { background: #28c840; }
+        .term-body { padding: 16px 18px; }
+        .term-body pre { font-family: var(--mono); font-size: 12.5px; line-height: 1.7; }
+        .tp { color: var(--green); }
+        .tc { color: var(--text); font-weight: 600; }
+        .tred { color: var(--red); }
+        .tgreen { color: var(--green); }
+        .tcmt { color: #333348; }
+        .thl { display: block; margin: 2px -18px; padding: 2px 18px; background: rgba(255, 71, 87, 0.08); border-left: 3px solid var(--red); }
+        .trl { display: block; margin: 2px -18px; padding: 2px 18px; background: rgba(46, 213, 115, 0.08); border-left: 3px solid var(--green); }
+        .s4-note {
+            font-size: 13px;
+            color: var(--text3);
+            font-family: var(--mono);
+            padding: 10px 16px;
+            background: rgba(91, 141, 239, 0.04);
+            border-radius: 8px;
+            border: 1px solid rgba(91, 141, 239, 0.1);
+            margin-top: 8px;
+        }
+
+        .slide-5 { background: radial-gradient(ellipse at 30% 50%, rgba(91, 141, 239, 0.06) 0%, transparent 50%), radial-gradient(ellipse at 70% 50%, rgba(165, 94, 234, 0.06) 0%, transparent 50%), var(--bg); }
+        .s5-wrap {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
+            z-index: 1;
+            gap: 28px;
+        }
+        .s5-title { font-size: 42px; font-weight: 900; text-align: center; letter-spacing: -1.5px; line-height: 1.2; }
+        .s5-title .grad { background: linear-gradient(135deg, var(--blue), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .vs-row { display: flex; align-items: center; gap: 0; width: 100%; max-width: 800px; }
+        .vs-side {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 28px 20px;
+            border-radius: 16px;
+            border: 2px solid;
+        }
+        .vs-logo { width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; margin-bottom: 12px; border: 3px solid; }
+        .vs-name { font-size: 28px; font-weight: 900; }
+        .vs-desc { font-size: 12px; color: var(--text2); margin-top: 8px; text-align: center; max-width: 220px; line-height: 1.45; }
+        .vs-argocd { background: rgba(91, 141, 239, 0.04); border-color: rgba(91, 141, 239, 0.2); }
+        .vs-argocd .vs-logo { background: rgba(91, 141, 239, 0.1); border-color: rgba(91, 141, 239, 0.3); }
+        .vs-argocd .vs-name { color: var(--blue); }
+        .vs-flux { background: rgba(165, 94, 234, 0.04); border-color: rgba(165, 94, 234, 0.2); }
+        .vs-flux .vs-logo { background: rgba(165, 94, 234, 0.1); border-color: rgba(165, 94, 234, 0.3); }
+        .vs-flux .vs-name { color: var(--purple); }
+        .s5-sub {
+            font-size: 16px;
+            color: var(--text);
+            font-weight: 600;
+            text-align: center;
+        }
+        .s5-compare {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+            width: 100%;
+            max-width: 700px;
+            margin-top: 8px;
+        }
+        .s5-comp {
+            font-size: 13px;
+            color: var(--text2);
+            padding: 10px 18px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        .s5-comp span { color: var(--text); font-weight: 700; }
+        .vs-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--bg);
+            border: 3px solid var(--border);
+            font-size: 18px;
+            font-weight: 900;
+            color: var(--text);
+            flex-shrink: 0;
+            z-index: 2;
+            margin: 0 -8px;
+        }
+        .s5-ps {
+            font-size: 15px;
+            color: var(--text2);
+            text-align: center;
+            font-weight: 600;
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="controls" id="controls">
+        <button class="active" onclick="showSlide(1)">1 — Hook</button>
+        <button onclick="showSlide(2)">2 — Problem</button>
+        <button onclick="showSlide(3)">3 — Solution</button>
+        <button onclick="showSlide(4)">4 — Self-Heal</button>
+        <button onclick="showSlide(5)">5 — CTA</button>
+        <span class="slide-counter" id="slideCounter">1 / 5</span>
+        <button class="pdf-btn" onclick="printPDF()">📄 Export PDF</button>
+    </div>
+
+    <div class="slides-wrapper">
+
+        <!-- SLIDE 1 — HOOK -->
+        <div class="slide slide-1 visible" id="slide-1">
+            <div class="slide-inner dbg">
+                <div class="s1-wrap">
+                    <div class="push-diagram">
+                        <div class="push-box push-ci">CI/CD Pipeline</div>
+                        <span class="push-arr">→</span>
+                        <div class="push-box push-cluster">K8s Cluster</div>
+                    </div>
+                    <div class="s1-title">
+                        <span class="r">Your CI/CD is Pushing</span><br>
+                        <span class="w">Directly to Prod. Right Now.</span>
+                    </div>
+                    <div class="s1-sub">
+                        Pipelines <code>kubectl apply</code>. Engineers deploy from laptops. Rollbacks = hope and prayer.
+                    </div>
+                    <div class="s1-extra">
+                        <div class="s1-stat">No audit trail.</div>
+                        <div class="s1-stat">No single source of truth.</div>
+                        <div class="s1-stat">Prod = whatever the last apply said.</div>
+                    </div>
+                </div>
+                <div class="sfoot">
+                    <div class="sfoot-l">🔄 Argo CD & GitOps</div>
+                    <div class="sfoot-r">1 / 5</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 2 — PUSH NIGHTMARE -->
+        <div class="slide slide-2" id="slide-2">
+            <div class="slide-inner dbg">
+                <div class="s2-wrap">
+                    <div>
+                        <div class="tag tag-red">⚠️ The Problem</div>
+                        <div class="hd" style="color: var(--red);">The Push Nightmare.</div>
+                    </div>
+                    <div class="conflict-row">
+                        <div class="conflict-box conflict-ci">
+                            <div class="c-title">CI/CD</div>
+                            <div class="c-sub">Deploys replicas: 2</div>
+                        </div>
+                        <div class="conflict-mid">⚡</div>
+                        <div class="conflict-box conflict-dev">
+                            <div class="c-title">Engineer</div>
+                            <div class="c-sub">kubectl scale → 5</div>
+                        </div>
+                    </div>
+                    <div class="blist">
+                        <div class="bitem">
+                            <span class="bicon">💀</span>
+                            <span class="btxt">CI pushes <strong>replicas: 2</strong>. Dev scales to 5 for load test. <span class="s">Next pipeline run overwrites it.</span></span>
+                        </div>
+                        <div class="bitem">
+                            <span class="bicon">🔄</span>
+                            <span class="btxt"><strong>Configuration drift.</strong> <span class="s">Who changed what? Nobody knows.</span></span>
+                        </div>
+                        <div class="bitem">
+                            <span class="bicon">🔥</span>
+                            <span class="btxt">Truth is scattered. <strong>Nobody wins.</strong></span>
+                        </div>
+                        <div class="bitem">
+                            <span class="bicon">📝</span>
+                            <span class="btxt">Env var changed in prod? <strong>Nobody committed it.</strong> <span class="s">Next deploy wipes it.</span></span>
+                        </div>
+                    </div>
+                    <div class="drift-row">
+                        <span class="drift-badge">Configuration Drift</span>
+                        <span class="drift-badge drift-2">No Audit Trail</span>
+                    </div>
+                </div>
+                <div class="sfoot">
+                    <div class="sfoot-l">🔄 Argo CD & GitOps</div>
+                    <div class="sfoot-r">2 / 5</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 3 — GITOPS SOLUTION -->
+        <div class="slide slide-3" id="slide-3">
+            <div class="slide-inner dbg">
+                <div class="s3-wrap">
+                    <div>
+                        <div class="tag tag-green">✅ The Solution</div>
+                        <div class="hd" style="color: var(--green);">GitOps: The Pull Method.</div>
+                    </div>
+                    <div class="pull-flow">
+                        <div class="flow-box fb-git">
+                            <div class="f-title">📂 Git</div>
+                            <div class="f-sub">Source of truth</div>
+                        </div>
+                        <span class="flow-arr">←</span>
+                        <div class="flow-box fb-argo">
+                            <div class="f-title">Argo CD</div>
+                            <div class="f-sub">Pulls & applies</div>
+                        </div>
+                        <span class="flow-arr">→</span>
+                        <div class="flow-box fb-k8s">
+                            <div class="f-title">Cluster</div>
+                            <div class="f-sub">Desired state</div>
+                        </div>
+                    </div>
+                    <div class="blist">
+                        <div class="bitem">
+                            <span class="bicon">📂</span>
+                            <span class="btxt"><strong>Git repo</strong> <span class="s">= your Helm charts, values, desired state.</span></span>
+                        </div>
+                        <div class="bitem">
+                            <span class="bicon">🔄</span>
+                            <span class="btxt"><strong>Argo CD watches Git,</strong> runs helm template, applies to cluster.</span>
+                        </div>
+                        <div class="bitem">
+                            <span class="bicon">🚫</span>
+                            <span class="btxt"><strong>No direct pushes.</strong> <span class="s">Everything flows from Git.</span></span>
+                        </div>
+                    </div>
+                    <div class="gitops-principles">
+                        <div class="gp-title">Four GitOps principles</div>
+                        <div class="gp-row">
+                            <span class="gp-item">1. Declarative</span>
+                            <span class="gp-item">2. Versioned</span>
+                            <span class="gp-item">3. Pulled</span>
+                            <span class="gp-item">4. Reconciled</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="sfoot">
+                    <div class="sfoot-l">🔄 Argo CD & GitOps</div>
+                    <div class="sfoot-r">3 / 5</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 4 — SELF-HEALING -->
+        <div class="slide slide-4" id="slide-4">
+            <div class="slide-inner dbg">
+                <div class="s4-wrap">
+                    <div>
+                        <div class="tag tag-blue">⚡ Operational Power</div>
+                        <div class="hd" style="color: var(--blue);">Self-Healing: Drift Dies Here.</div>
+                    </div>
+                    <div class="term-block">
+                        <div class="term-tb">
+                            <span class="dot dot-r"></span>
+                            <span class="dot dot-y"></span>
+                            <span class="dot dot-g"></span>
+                            <span style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-left:8px;">Terminal</span>
+                        </div>
+                        <div class="term-body">
+                            <pre><span class="tcmt"># Someone manually edits the deployment</span>
+<span class="thl"><span class="tp">$</span> <span class="tc">kubectl edit</span> deployment account-svc
+<span class="tred"># replicas: 2 → 5 (load test)</span></span>
+
+<span class="tcmt"># Argo CD detects drift in seconds. Reverts to Git.</span>
+<span class="trl">→ Deployment reverted to replicas: 2 ✓</span>
+
+<span class="tcmt"># Manual edits don't stick. Git wins.</span></pre>
+                        </div>
+                    </div>
+                    <div class="blist">
+                        <div class="bitem">
+                            <span class="bicon">👀</span>
+                            <span class="btxt">Someone runs <strong>kubectl edit deployment</strong> — changes replicas.</span>
+                        </div>
+                        <div class="bitem">
+                            <span class="bicon">⚡</span>
+                            <span class="btxt">Argo CD detects the drift in <strong>seconds</strong>.</span>
+                        </div>
+                        <div class="bitem">
+                            <span class="bicon">✅</span>
+                            <span class="btxt">Reverts cluster to match Git. <strong>No debates.</strong></span>
+                        </div>
+                        <div class="bitem">
+                            <span class="bicon">📋</span>
+                            <span class="btxt">UI shows <strong>diff before sync.</strong> <span class="s">Rollback = revert commit + push.</span></span>
+                        </div>
+                    </div>
+                    <div class="s4-note">
+                        Default sync interval: 3 min. Or use webhooks for instant reconciliation.
+                    </div>
+                </div>
+                <div class="sfoot">
+                    <div class="sfoot-l">🔄 Argo CD & GitOps</div>
+                    <div class="sfoot-r">4 / 5</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 5 — CTA -->
+        <div class="slide slide-5" id="slide-5">
+            <div class="slide-inner dbg">
+                <div class="s5-wrap">
+                    <div class="s5-title">
+                        <span class="grad">Argo CD vs. Flux —</span><br>
+                        <span style="color:var(--text)">Which One?</span>
+                    </div>
+                    <div class="vs-row">
+                        <div class="vs-side vs-argocd">
+                            <div class="vs-logo">🔄</div>
+                            <div class="vs-name">Argo CD</div>
+                            <div class="vs-desc">UI, RBAC, multi-cluster. Easier to get started.</div>
+                        </div>
+                        <div class="vs-badge">VS</div>
+                        <div class="vs-side vs-flux">
+                            <div class="vs-logo">⚡</div>
+                            <div class="vs-name">Flux</div>
+                            <div class="vs-desc">GitOps-native. Lighter. CNCF graduated first.</div>
+                        </div>
+                    </div>
+                    <div class="s5-compare">
+                        <div class="s5-comp"><span>Argo CD:</span> Want a UI? Need RBAC? Start here.</div>
+                        <div class="s5-comp"><span>Flux:</span> Pure GitOps. Lighter footprint. Git-native.</div>
+                    </div>
+                    <div class="s5-sub">💬 Let me know your pick in the comments.</div>
+                    <div class="s5-ps">P.S. Friday: Open-Source Kubernetes Guide — 10 tools every backend engineer needs. Link in bio.</div>
+                </div>
+                <div class="sfoot">
+                    <div class="sfoot-l">🔄 Argo CD & GitOps</div>
+                    <div class="sfoot-r">5 / 5</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let cur = 1;
+        const total = 5;
+        function showSlide(n) {
+            cur = n;
+            document.querySelectorAll('.slide').forEach(s => s.classList.remove('visible'));
+            document.getElementById(`slide-${n}`).classList.add('visible');
+            document.querySelectorAll('.controls button:not(.pdf-btn)').forEach((b, i) => b.classList.toggle('active', i + 1 === n));
+            document.getElementById('slideCounter').textContent = `${n} / ${total}`;
+        }
+        function printPDF() { window.print(); }
+        document.addEventListener('keydown', e => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { if (cur < total) showSlide(cur + 1); }
+            else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { if (cur > 1) showSlide(cur - 1); }
+        });
+    </script>
+</body>
+
+</html>

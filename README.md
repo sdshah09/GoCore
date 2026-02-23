@@ -450,6 +450,180 @@ docker-compose exec order_db psql -U akhil -d akhil
 curl http://localhost:9200/_cluster/health
 ```
 
+---
+
+## End-to-End Deployment
+
+GoCore supports multiple deployment paths from local development to production Kubernetes.
+
+### Deployment Options Overview
+
+| Environment | Tool | Use Case |
+|-------------|------|----------|
+| **Local** | Docker Compose | Development, quick testing |
+| **Kubernetes** | Helm | Manual K8s deployment, CI/CD pipelines |
+| **Kubernetes** | Argo CD + Helm | GitOps, production, self-healing |
+
+---
+
+### 1. Local Development (Docker Compose)
+
+**Fastest way to run the full stack:**
+
+```bash
+docker-compose up -d
+```
+
+This starts:
+- **4 microservices:** account, product, order, graphql
+- **3 databases:** PostgreSQL (account, order), Elasticsearch (product)
+- **GraphQL Playground:** http://localhost:8000/playground
+
+---
+
+### 2. Kubernetes Deployment (Helm)
+
+Deploy the entire platform to any Kubernetes cluster with a single Helm command.
+
+#### Prerequisites
+
+- Kubernetes cluster (minikube, kind, EKS, GKE, AKS, etc.)
+- `kubectl` configured
+- Helm 3+
+
+#### Deploy with Helm
+
+```bash
+# Create values-secret.yaml (gitignored) for secrets, or use --set
+# Example: cp gocore/values-secret.yaml.example gocore/values-secret.yaml
+
+# Install the chart
+helm install gocore ./gocore -f gocore/values.yaml -f gocore/values-secret.yaml
+
+# Or upgrade if already installed
+helm upgrade --install gocore ./gocore -f gocore/values.yaml -f gocore/values-secret.yaml
+```
+
+#### What Gets Deployed
+
+| Resource | Description |
+|----------|-------------|
+| **Deployments** | account, order, product, graphql + account-db, order-db, product-db |
+| **Services** | ClusterIP services for all components |
+| **PVCs** | Persistent volumes for PostgreSQL and Elasticsearch data |
+| **Secret** | DB credentials (from values-secret.yaml) |
+| **Ingress** | Optional ingress for external access |
+
+#### Customize Deployment
+
+Edit `gocore/values.yaml` to change:
+- **Replicas** per service
+- **Image tags** and repositories
+- **Resources** (CPU/memory limits)
+- **Ingress** rules and hostnames
+
+```bash
+# Override values at install time
+helm install gocore ./gocore -f gocore/values.yaml \
+  --set services.account.replicas=3 \
+  --set ingress.enabled=true
+```
+
+---
+
+### 3. GitOps Deployment (Argo CD)
+
+Use Argo CD for declarative, Git-driven deployments with automatic sync and self-healing.
+
+#### Prerequisites
+
+- Kubernetes cluster with Argo CD installed
+- GoCore repo accessible (GitHub, GitLab, etc.)
+
+#### Create Argo CD Application
+
+| Field | Value |
+|-------|-------|
+| **Application Name** | `gocore` (must be lowercase) |
+| **Repository URL** | `https://github.com/sdshah09/GoCore` |
+| **Path** | `gocore` |
+| **Revision** | `main` (or your branch) |
+| **Source Type** | Helm |
+| **Destination Namespace** | `default` (or your namespace) |
+| **Sync Policy** | Automatic (optional: Self Heal, Prune) |
+
+#### Workflow
+
+1. **Edit** `gocore/values.yaml` or chart templates
+2. **Commit and push** to the watched branch
+3. Argo CD detects changes and syncs automatically
+4. Cluster state matches Git — manual `kubectl` changes are reverted if Self Heal is on
+
+#### Secrets with Argo CD
+
+Do not commit secrets to Git. Use Argo CD **Parameters** or a values file from a secret store to pass `secrets.dbCredentials.stringData.*` at sync time.
+
+---
+
+### 4. End-to-End Flow Summary
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Developer                                                                │
+│  └── Edit code, values.yaml, Helm templates                              │
+│      └── Commit & push to Git                                             │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Git (Source of Truth)                                                    │
+│  └── gocore/ Chart + values.yaml                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+              ┌─────────────────────┼─────────────────────┐
+              ▼                     ▼                     ▼
+┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│ Docker Compose   │  │ Helm             │  │ Argo CD          │
+│ (Local dev)      │  │ (Manual K8s)     │  │ (GitOps K8s)     │
+│                  │  │                  │  │                  │
+│ docker-compose   │  │ helm install     │  │ Watches Git      │
+│ up -d            │  │ gocore ./gocore  │  │ helm template    │
+│                  │  │                  │  │ + apply          │
+└──────────────────┘  └──────────────────┘  └──────────────────┘
+              │                     │                     │
+              └─────────────────────┼─────────────────────┘
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Running GoCore Platform                                                  │
+│  • GraphQL Gateway  • Account Service  • Product Service  • Order Service │
+│  • PostgreSQL (x2)  • Elasticsearch                                       │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 5. Deployment Features
+
+| Feature | Docker Compose | Helm | Argo CD |
+|---------|----------------|------|---------|
+| One-command deploy | ✅ | ✅ | ✅ (after initial setup) |
+| Parameterized config | ❌ | ✅ values.yaml | ✅ values + Parameters |
+| Secrets management | Env vars | values-secret.yaml | Parameters / external secrets |
+| Rollback | `docker-compose down` | `helm rollback` | Git revert + sync |
+| Self-healing | ❌ | ❌ | ✅ |
+| Multi-environment | ❌ | ✅ (values per env) | ✅ (apps per env) |
+| Audit trail | ❌ | ❌ | ✅ (Git history) |
+
+---
+
+### 6. Further Reading
+
+- **Helm in this project:** `docs/HELM_IN_THIS_PROJECT.md`
+- **Argo CD setup:** `docs/ARGOCD_NOTES.md`
+- **Helm chart reference:** `docs/HELM_CHART_NOTES.md`
+
+---
+
 ## Contributing
 
 1. Fork the repository
